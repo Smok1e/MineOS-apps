@@ -13,10 +13,11 @@ local configPath = filesystem.path(system.getCurrentScript()) .. "Config.cfg"
 local config = {
 	backgroundColor = 0x0F0F0F,
     dropColor = 0x00FF00,
+	rainbow = false,
     dropAmount = 10,
     dropLength = 10,
     speed = 1,
-    chars = "01"
+    chars = "⢸⡇"
 }
 
 if filesystem.exists(configPath) then
@@ -26,13 +27,24 @@ if filesystem.exists(configPath) then
 end
 
 local colors
-
 local function updateColors()
-    colors = {}
+	local function fillColorTransitionTable(tbl, foreground)
+		for i = 1, config.dropLength do
+			table.insert(tbl, color.transition(config.backgroundColor, foreground, i / config.dropLength))
+		end
+	end
 
-    for i = 1, config.dropLength do
-        table.insert(colors, color.transition(config.backgroundColor, config.dropColor, (i - 1) / (config.dropLength - 1)))
-    end
+	colors = {}
+	if config.rainbow then
+		local count = 16
+
+		for i = 1, count do
+			colors[i] = {}
+			fillColorTransitionTable(colors[i], color.RGBToInteger(color.HSBToRGB(360 * (i - 1) / (count - 1), 1, 1)))
+		end
+	else
+		fillColorTransitionTable(colors, config.dropColor)
+	end
 end
 
 updateColors()
@@ -53,7 +65,6 @@ end
 
 wallpaper.draw = function(wallpaper)
 	while #drops < config.dropAmount do
-    --if #drops < config.dropAmount and math.random(3) == 1 then
         table.insert(drops, {
             x = math.random(0, wallpaper.width - 1),
             y = 0,
@@ -63,23 +74,36 @@ wallpaper.draw = function(wallpaper)
 
     screen.drawRectangle(wallpaper.x, wallpaper.y, wallpaper.width, wallpaper.height, config.backgroundColor, 0, " ")
 
-    local drop
+    local drop, x, y, charIndex
     for i = 1, #drops do
         drop = drops[i]
 
+		x = drop.x
+
+		local colorTransitionTable
+		if config.rainbow then
+			local index = math.floor(#colors * x / wallpaper.width) + 1
+
+			colorTransitionTable = colors[index]
+			if not colorTransitionTable then
+				GUI.alert(#colors, index, x, wallpaper.width, x - 1)
+			end
+		else
+			colorTransitionTable = colors
+		end
+
         for i = 1, config.dropLength do
-            local x, y = drop.x, math.floor(drop.y) - config.dropLength + i
+            y = math.floor(drop.y) - config.dropLength + i
 
 			math.randomseed(y * wallpaper.width + x)
-
 			math.random() -- ?
-			local charIndex = math.random(unicode.wlen(config.chars))
+			charIndex = math.random(unicode.wlen(config.chars))
 
 			screen.set(
 				wallpaper.x + x,
 				wallpaper.y + y,
 				config.backgroundColor,
-				colors[i],
+				colorTransitionTable[i],
 				unicode.sub(config.chars, charIndex, charIndex)
 			)
         end
@@ -112,7 +136,17 @@ wallpaper.configure = function(layout)
 		saveConfig()
 	end
 
-	layout:addChild(GUI.colorSelector(1, 1, 36, 3, config.dropColor, "Drop color")).onColorSelected = function(_, object)
+	local rainbowSwitch = layout:addChild(GUI.switchAndLabel(1, 1, 16, 6, 0x66DB80, 0x0, 0xF0F0F0, 0xC3C3C3, "Rainbow", config.rainbow)).switch
+	local dropColorSelector = layout:addChild(GUI.colorSelector(1, 1, 36, 3, config.dropColor, "Drop color"))
+
+	rainbowSwitch.onStateChanged = function()
+		config.rainbow = rainbowSwitch.state
+		dropColorSelector.hidden = rainbowSwitch.state
+		saveConfig()
+	end
+
+	dropColorSelector.hidden = config.rainbow
+	dropColorSelector.onColorSelected = function(_, object)
 		config.dropColor = object.color
 		saveConfig()
 	end
