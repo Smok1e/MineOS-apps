@@ -14,6 +14,7 @@ local config = {
 	backgroundColor = 0x0F0F0F,
     dropColor = 0x00FF00,
 	rainbow = false,
+	interpolationPower = 3,
     dropAmount = 10,
     dropLength = 10,
     speed = 1,
@@ -26,11 +27,22 @@ if filesystem.exists(configPath) then
 	end
 end
 
+-- Precalculating colors to not to call color.transition for each pixel
 local colors
+
 local function updateColors()
 	local function fillColorTransitionTable(tbl, foreground)
+		local t
+
 		for i = 1, config.dropLength do
-			table.insert(tbl, color.transition(config.backgroundColor, foreground, i / config.dropLength))
+			table.insert(
+				tbl, 
+				color.transition(
+					config.backgroundColor, 
+					foreground, 
+					(i / config.dropLength)^config.interpolationPower
+				)
+			)
 		end
 	end
 
@@ -58,22 +70,20 @@ end
 
 local drops, lastUpdateTime = {}, computer.uptime()
 
-local function randomChar()
-    local i = math.random(#chars)
-    return chars:sub(i, i)
-end
-
 wallpaper.draw = function(wallpaper)
+	-- Spawning drops
 	while #drops < config.dropAmount do
         table.insert(drops, {
             x = math.random(0, wallpaper.width - 1),
             y = 0,
-			speed = .5 + math.random()
+			speed = .5 + 2 * math.random() ^ 2
         })
     end
 
+	-- Filling background
     screen.drawRectangle(wallpaper.x, wallpaper.y, wallpaper.width, wallpaper.height, config.backgroundColor, 0, " ")
 
+	-- Rendering drops
     local drop, x, y, charIndex
     for i = 1, #drops do
         drop = drops[i]
@@ -109,6 +119,7 @@ wallpaper.draw = function(wallpaper)
         end
     end
 
+	-- Updating
     local updateTime = computer.uptime()
 	local deltaTime = updateTime - lastUpdateTime
 
@@ -131,11 +142,13 @@ end
 --------------------------------------------------------------------------------
 
 wallpaper.configure = function(layout)
+	-- Background color picker
 	layout:addChild(GUI.colorSelector(1, 1, 36, 3, config.backgroundColor, "Background color")).onColorSelected = function(_, object)
 		config.backgroundColor = object.color
 		saveConfig()
 	end
 
+	-- Foreground color settings
 	local rainbowSwitch = layout:addChild(GUI.switchAndLabel(1, 1, 16, 6, 0x66DB80, 0x0, 0xF0F0F0, 0xC3C3C3, "Rainbow", config.rainbow)).switch
 	local dropColorSelector = layout:addChild(GUI.colorSelector(1, 1, 36, 3, config.dropColor, "Drop color"))
 
@@ -151,6 +164,16 @@ wallpaper.configure = function(layout)
 		saveConfig()
 	end
 
+	-- Interpolation method selector
+	layout:addChild(GUI.label(1, 1, 1, 1, 0xC3C3C3, "Interpolation method"):setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_TOP))
+	
+	local comboBox = layout:addChild(GUI.comboBox(1, 1, 36, 1, 0xF0F0F0, 0x2D2D2D, 0x444444, 0x999999))
+	comboBox:addItem("Linear"   ).onTouch = function() config.interpolationPower = 1 saveConfig() end
+	comboBox:addItem("Quadratic").onTouch = function() config.interpolationPower = 2 saveConfig() end
+	comboBox:addItem("Cubic"    ).onTouch = function() config.interpolationPower = 3 saveConfig() end
+	comboBox.selectedItem = config.interpolationPower
+
+	-- Drop amount slider
 	local dropAmountSlider = layout:addChild(
 		GUI.slider(
 			1, 1, 
@@ -172,6 +195,7 @@ wallpaper.configure = function(layout)
 		saveConfig()
 	end
 
+	-- Speed slider
 	local speedSlider = layout:addChild(
 		GUI.slider(
 			1, 1, 
@@ -194,6 +218,7 @@ wallpaper.configure = function(layout)
 		saveConfig()
 	end
 
+	-- Characters input
 	local input = layout:addChild(GUI.input(1, 1, 36, 3, 0xEEEEEE, 0x555555, 0x999999, 0xFFFFFF, 0x2D2D2D, config.chars))
 	input.onInputFinished = function()
 		if #input.text > 0 then
