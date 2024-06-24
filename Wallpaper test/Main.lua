@@ -3,6 +3,7 @@ local system = require("System")
 local paths = require("Paths")
 local filesystem = require("Filesystem")
 local screen = require("Screen")
+local color = require("Color")
 
 --------------------------------------------------------------------------------- Wallpaper panel object
 
@@ -44,7 +45,26 @@ local function wallpaperPanelNew(x, y, width, height, backgroundColor, textColor
 	return panel
 end
 
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------- Separator
+
+local function separatorDraw(separator)
+	screen.drawText(
+		separator.x, 
+		separator.y, 
+		separator.color, 
+		string.rep("─", separator.width)
+	)
+end
+
+local function separatorNew(x, y, width, color)
+	local separator = GUI.object(x, y, width, 1)
+	separator.color = color
+	separator.draw = separatorDraw
+
+	return separator
+end
+
+--------------------------------------------------------------------------------- Fps meter
 
 local window = GUI.window(1, 1, 100, 30, 0xE1E1E1)
 window.actionButtons = window:addChild(GUI.actionButtons(4, 2, true))
@@ -107,7 +127,7 @@ for i = 1, #files do
 	end
 end
 
-local fpsLabel
+local wallpaperFpsMeter, systemFpsMeter
 
 -- Loading selected wallpaper
 comboBox.onItemSelected = function(index)
@@ -130,14 +150,15 @@ comboBox.onItemSelected = function(index)
 		return
 	end
 
-	local renderTimeSum, frameCount = 0, 0
-	fpsLabel.text = "FPS: N/A"
+	local systemStartTime, renderTimeSum, frameCount = computer.uptime(), 0, 0
+	systemFpsMeter.text    = "System FPS:    N/A"
+	wallpaperFpsMeter.text = "Wallpaper FPS: N/A"
 	
 	-- Hooking panel drawing function
 	local oldDraw = window.wallpaperPanel.draw
 
 	window.wallpaperPanel.draw = function(...)
-		local startTime = computer.uptime()
+		local wallpaperStartTime = computer.uptime()
 
 		-- Trying to render wallpaper
 		local result, reason = xpcall(oldDraw, debug.traceback, ...)
@@ -151,12 +172,14 @@ comboBox.onItemSelected = function(index)
 		end
 
 		-- Calculating fps
-		renderTimeSum = renderTimeSum + computer.uptime() - startTime
+		renderTimeSum = renderTimeSum + computer.uptime() - wallpaperStartTime
 		frameCount = frameCount + 1
 
-		if frameCount > 20 then
-			fpsLabel.text = "FPS: " .. math.floor(1.0 / (renderTimeSum / frameCount))
-			frameCount = 0
+		if frameCount > 50 then
+			systemFpsMeter.text    = "System FPS:    " .. math.floor(frameCount / (computer.uptime() - systemStartTime))
+			wallpaperFpsMeter.text = "Wallpaper FPS: " .. math.floor(frameCount / renderTimeSum)
+			
+			systemStartTime, renderTimeSum, frameCount = computer.uptime(), 0, 0
 		end
 	end
 
@@ -168,8 +191,10 @@ reloadButton.onTouch = function(button)
 end
 
 -- Fps meter
-fpsLabel = layout:addChild(GUI.label(1, 1, 1, 1, 0xD2D2D2, ""))
-fpsLabel:setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_CENTER)
+systemFpsMeter = layout:addChild(GUI.label(1, 1, 1, 1, 0xD2D2D2, ""))
+wallpaperFpsMeter = layout:addChild(GUI.label(1, 1, 1, 1, 0xD2D2D2, ""))
+
+layout:addChild(separatorNew(1, 1, 1, 0x323232))
 
 -- Loading first wallpaper from list
 reloadButton:onTouch()

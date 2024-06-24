@@ -18,7 +18,8 @@ local config = {
     dropAmount = 10,
     dropLength = 10,
     speed = 1,
-    chars = "⢸⡇"
+    chars = "⢸⡇",
+	braille = false
 }
 
 if filesystem.exists(configPath) then
@@ -66,6 +67,18 @@ local function saveConfig()
     updateColors()
 end
 
+local function randomChar(x, y)
+	math.randomseed(y * wallpaper.width + x)
+	math.random() -- ?
+	
+	if config.braille then
+		return unicode.char(math.random(0x2800, 0x28FF))
+	else
+		local charIndex = math.random(unicode.wlen(config.chars))
+		return unicode.sub(config.chars, charIndex, charIndex)
+	end
+end
+
 --------------------------------------------------------------------------------
 
 local drops, lastUpdateTime = {}, computer.uptime()
@@ -95,9 +108,6 @@ wallpaper.draw = function(wallpaper)
 			local index = math.floor(#colors * x / wallpaper.width) + 1
 
 			colorTransitionTable = colors[index]
-			if not colorTransitionTable then
-				GUI.alert(#colors, index, x, wallpaper.width, x - 1)
-			end
 		else
 			colorTransitionTable = colors
 		end
@@ -105,16 +115,12 @@ wallpaper.draw = function(wallpaper)
         for i = 1, config.dropLength do
             y = math.floor(drop.y) - config.dropLength + i
 
-			math.randomseed(y * wallpaper.width + x)
-			math.random() -- ?
-			charIndex = math.random(unicode.wlen(config.chars))
-
 			screen.set(
 				wallpaper.x + x,
 				wallpaper.y + y,
 				config.backgroundColor,
 				colorTransitionTable[i],
-				unicode.sub(config.chars, charIndex, charIndex)
+				randomChar(x, y)
 			)
         end
     end
@@ -149,7 +155,7 @@ wallpaper.configure = function(layout)
 	end
 
 	-- Foreground color settings
-	local rainbowSwitch = layout:addChild(GUI.switchAndLabel(1, 1, 16, 6, 0x66DB80, 0x0, 0xF0F0F0, 0xC3C3C3, "Rainbow", config.rainbow)).switch
+	local rainbowSwitch = layout:addChild(GUI.switchAndLabel(1, 1, 36, 6, 0x66DB80, 0xE1E1E1, 0xFFFFFF, 0xA5A5A5, "Rainbow", config.rainbow)).switch
 	local dropColorSelector = layout:addChild(GUI.colorSelector(1, 1, 36, 3, config.dropColor, "Drop color"))
 
 	rainbowSwitch.onStateChanged = function()
@@ -165,9 +171,9 @@ wallpaper.configure = function(layout)
 	end
 
 	-- Interpolation method selector
-	layout:addChild(GUI.label(1, 1, 1, 1, 0xC3C3C3, "Interpolation method"):setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_TOP))
+	layout:addChild(GUI.label(1, 1, 1, 1, 0xA5A5A5, "Interpolation method"):setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_TOP))
 	
-	local comboBox = layout:addChild(GUI.comboBox(1, 1, 36, 1, 0xF0F0F0, 0x2D2D2D, 0x444444, 0x999999))
+	local comboBox = layout:addChild(GUI.comboBox(1, 1, 36, 1, 0xE1E1E1, 0x696969, 0xD2D2D2, 0xA5A5A5))
 	comboBox:addItem("Linear"   ).onTouch = function() config.interpolationPower = 1 saveConfig() end
 	comboBox:addItem("Quadratic").onTouch = function() config.interpolationPower = 2 saveConfig() end
 	comboBox:addItem("Cubic"    ).onTouch = function() config.interpolationPower = 3 saveConfig() end
@@ -219,11 +225,22 @@ wallpaper.configure = function(layout)
 	end
 
 	-- Characters input
-	local input = layout:addChild(GUI.input(1, 1, 36, 3, 0xEEEEEE, 0x555555, 0x999999, 0xFFFFFF, 0x2D2D2D, config.chars))
+	layout:addChild(GUI.label(1, 1, 1, 1, 0xA5A5A5, "Characters"):setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_TOP))
+
+	local brailleSwitch = layout:addChild(GUI.switchAndLabel(1, 1, 36, 6, 0x66DB80, 0xE1E1E1, 0xFFFFFF, 0xA5A5A5, "Braille", config.braille)).switch
+
+	local input = layout:addChild(GUI.input(1, 1, 36, 3, 0xE1E1E1, 0x696969, 0xA5A5A5, 0xE1E1E1, 0x2D2D2D, config.chars))
 	input.onInputFinished = function()
 		if #input.text > 0 then
 			config.chars = input.text
 			saveConfig()
 		end
+	end
+
+	input.hidden = config.braille
+	brailleSwitch.onStateChanged = function()
+		config.braille = brailleSwitch.state
+		input.hidden = config.braille
+		saveConfig()
 	end
 end
