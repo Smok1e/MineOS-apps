@@ -20,7 +20,6 @@ local TILE_COLOR = {
 	FOREGROUND = {
 		DEFAULT = 0x242424,
 		DIGIT = {
-			0x000000,
 			0x0000FF,
 			0x008000,
 			0xFF0000,
@@ -44,7 +43,7 @@ local TILE_COLOR = {
 
 local TILE_SYMBOL = {
 	HIDDEN = '⬜',
-	DIGIT = {'  ', '１', '２', '３', '４', '５', '６', '７', '８'},
+	DIGIT = {'１', '２', '３', '４', '５', '６', '７', '８'},
 	MARK = '⯄',
 }
 
@@ -62,10 +61,12 @@ local function minefieldDraw(minefield)
 			local tile = minefield:getTile(x, y)
 
 			if tile.revealed then
-				local digit = (tile.digit or 0) + 1
-
-				foreground = TILE_COLOR.FOREGROUND.DIGIT[digit]
-				symbol = TILE_SYMBOL.DIGIT[digit]
+				if tile.digit then
+					foreground = TILE_COLOR.FOREGROUND.DIGIT[tile.digit]
+					symbol = TILE_SYMBOL.DIGIT[tile.digit]
+				else
+					symbol = nil
+				end
 			else
 				if tile.marked then
 					symbol = TILE_SYMBOL.MARK
@@ -104,13 +105,25 @@ local function minefieldDraw(minefield)
 				end
 			end
 
-			screen.set(
-				minefield.x + 2 * (x - 1),
-				minefield.y +      y - 1,
-				background,
-				foreground,
-				symbol
-			)
+			if symbol then
+				screen.set(
+					minefield.x + 2 * (x - 1),
+					minefield.y +      y - 1,
+					background,
+					foreground,
+					symbol
+				)
+			else
+				screen.drawRectangle(
+					minefield.x + 2 * (x - 1),
+					minefield.y +      y - 1,
+					2,
+					1,
+					background,
+					foreground,
+					" "					
+				)
+			end
 		end
 	end
 end
@@ -145,11 +158,11 @@ local function minefieldRevealTile(minefield, x, y)
 	end
 
 	local tile = minefield:getTile(x, y)
-	if tile.type == TILE_TYPE.MINE then
-		if tile.marked then
-			return
-		end
+	if tile.marked then
+		return
+	end
 
+	if tile.type == TILE_TYPE.MINE then
 		minefield:onMineExploded(x, y)
 		return
 	end
