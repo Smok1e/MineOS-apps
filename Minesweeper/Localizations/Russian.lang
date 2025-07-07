@@ -1,0 +1,22 @@
+{
+	difficultyBeginner = "Новичок",
+	difficultyIntermediate = "Нормальный",
+	difficultyAdvanced = "Продвинутый",
+	difficultyCustom = "Пользовательский",
+	mines = "мин",
+
+    hardcoreMode = "Режим хардкор",
+    selfDestructingCardRequired = "Для режима хардкор необходима карта самоуничтожения",
+
+    customGame = "Пользовательский режим",
+	width = "Ширина",
+	height = "Высота",
+	mineCount = "Кол-во мин",
+	ok = "Ок",
+	cancel = "Отмена",
+
+	gameWon = "Поздравляем, вы выиграли!",
+	gameLost = "Вы проиграли эту игру. Удачи в следующий раз!",
+    time = "Время",
+    minesDefused = "Мин обезврежено"
+}

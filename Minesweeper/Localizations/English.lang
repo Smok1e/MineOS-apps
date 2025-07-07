@@ -1,0 +1,22 @@
+{
+	difficultyBeginner = "Beginner",
+	difficultyIntermediate = "Intermediate",
+	difficultyAdvanced = "Advanced",
+	difficultyCustom = "Custom",
+	mines = "mines",
+
+	hardcoreMode = "Hardcore mode",
+	selfDestructingCardRequired = "Self-Destructing Card is required in order to use hardcore mode",
+
+	customGame = "Custom game",
+	width = "Width",
+	height = "Height",
+	mineCount = "Mine count",
+	ok = "Ok",
+	cancel = "Cancel",
+
+	gameWon = "Congratulations, you won!",
+	gameLost = "Sorry, you lost this game. Better luck next time!",
+	time = "Time",
+	minesDefused = "Mines defused"
+}
